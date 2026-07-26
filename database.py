@@ -49,11 +49,56 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            client_telegram_id INTEGER PRIMARY KEY,
+            messages_json TEXT DEFAULT '[]',
+            lead_id INTEGER,
+            handoff INTEGER DEFAULT 0,
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
-# ---------- SOTUVCHILAR ----------
+# ---------- AI SUHBAT TARIXI ----------
+
+def get_conversation(client_telegram_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM conversations WHERE client_telegram_id = ?", (client_telegram_id,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+
+def save_conversation(client_telegram_id: int, messages_json: str, lead_id=None):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO conversations (client_telegram_id, messages_json, lead_id, updated_at)
+           VALUES (?, ?, ?, datetime('now'))
+           ON CONFLICT(client_telegram_id) DO UPDATE SET
+             messages_json = excluded.messages_json,
+             lead_id = COALESCE(excluded.lead_id, conversations.lead_id),
+             updated_at = datetime('now')""",
+        (client_telegram_id, messages_json, lead_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def mark_handoff(client_telegram_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE conversations SET handoff = 1 WHERE client_telegram_id = ?",
+        (client_telegram_id,),
+    )
+    conn.commit()
+    conn.close()
 
 def add_seller(telegram_id: int, name: str):
     conn = get_conn()

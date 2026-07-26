@@ -13,11 +13,13 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+
+import ai_seller
 
 # Anketa to'ldirilayotganda /buyruq yozilsa, uni javob deb qabul qilmaslik uchun filtr
 def not_a_command(message: Message) -> bool:
@@ -36,6 +38,18 @@ logger = logging.getLogger(__name__)
 
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+
+async def _send_notifications(notify: list):
+    """ai_seller qaytargan xabarnomalar ro'yxatini haqiqiy Telegram xabarlariga aylantiradi."""
+    for item in notify:
+        try:
+            if item["type"] == "seller":
+                await bot.send_message(item["telegram_id"], item["text"])
+            elif item["type"] == "admin" and config.ADMIN_GROUP_ID:
+                await bot.send_message(config.ADMIN_GROUP_ID, item["text"])
+        except Exception as e:
+            logger.warning(f"Xabarnoma yuborib bo'lmadi: {e}")
 
 
 # ---------------- MIJOZ SUHBATI (FSM holatlari) ----------------
@@ -62,12 +76,39 @@ async def cmd_start(message: Message, state: FSMContext):
         )
         return
 
+    if config.AI_SELLER_ENABLED:
+        reply_text, notify = ai_seller.handle_message(
+            message.from_user.id,
+            message.from_user.username or "",
+            "[Yangi mijoz botga /start bilan kirdi. Iliq salomlashib, qaysi davlatga qiziqishini so'ra.]",
+        )
+        await message.answer(reply_text, reply_markup=ReplyKeyboardRemove())
+        await _send_notifications(notify)
+        return
+
     await state.set_state(LeadForm.country)
     await message.answer(
         "Assalomu alaykum! 👋\nViza olish bo'yicha konsalting xizmatimizga xush kelibsiz.\n\n"
         "Qaysi davlatga ish vizasi olmoqchisiz? (Masalan: Germaniya, Chexiya, Polsha va h.k.)",
         reply_markup=ReplyKeyboardRemove(),
     )
+
+
+@dp.message(StateFilter(None), F.func(not_a_command))
+async def ai_chat_handler(message: Message):
+    """AI sotuvchi yoqilgan bo'lsa, mijozning har qanday erkin xabari shu yerga tushadi
+    (agar u FSM anketasida bo'lmasa va sotuvchi bo'lmasa)."""
+    if not config.AI_SELLER_ENABLED:
+        return
+    seller = db.get_seller_by_telegram_id(message.from_user.id)
+    if seller:
+        return
+
+    reply_text, notify = ai_seller.handle_message(
+        message.from_user.id, message.from_user.username or "", message.text or ""
+    )
+    await message.answer(reply_text)
+    await _send_notifications(notify)
 
 
 @dp.message(LeadForm.country, F.func(not_a_command))

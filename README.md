@@ -78,6 +78,33 @@ python3 -m venv venv
    ```
    (production'da buni gunicorn/nginx bilan ishga tushirish tavsiya etiladi)
 
+## AI sotuvchini yoqish (Claude bilan avtomatik sotuv)
+
+Bot endi mijoz bilan **avtomatik gaplashib, sotib beradigan** rejimga ega.
+Yoqish uchun:
+
+1. https://console.anthropic.com saytida hisob oching va API kalit yarating
+   (Settings → API Keys → Create Key)
+2. Railway'dagi "Variables" bo'limiga 2 ta o'zgaruvchi qo'shing:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...sizning-kalitingiz...
+   AI_SELLER_ENABLED=true
+   ```
+3. Deploy tugagach, botga `/start` yozib tekshiring — endi savol-anketa o'rniga
+   AI siz bilan tabiiy tarzda gaplasha boshlaydi.
+
+**AI qanday ishlaydi:**
+- `pricing.py` faylidagi narxlar jadvali va shartnoma shartlari asosida javob beradi
+- Mijoz ism+telefon bergach, avtomatik lidni saqlab, sotuvchiga biriktiradi
+- Mijoz to'lovga rozi bo'lsa, to'lov havolasini o'zi tayyorlaydi
+- G'azablangan/murakkab holatlarda avtomatik ravishda nazorat guruhiga signal beradi
+
+**Narxni yoki shartlarni o'zgartirish:** `pricing.py` (raqamlar) va `ai_seller.py`
+ichidagi `SYSTEM_PROMPT` (qoidalar, ohang, jarayon tavsifi) fayllarini tahrirlang.
+
+**AI'ni o'chirib, oddiy anketaga qaytish:** Railway'da `AI_SELLER_ENABLED=false`
+qiling — bot avtomatik eski (davlat/maqsad/telefon so'raydigan) rejimga qaytadi.
+
 ## Keyingi bosqichlar (kengaytirish uchun g'oyalar)
 
 - Target reklama linkini `https://t.me/BOTUSERNAME?start=fb_ads` ko'rinishida
