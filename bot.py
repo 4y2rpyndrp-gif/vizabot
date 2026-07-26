@@ -57,7 +57,7 @@ async def cmd_start(message: Message, state: FSMContext):
     await state.set_state(LeadForm.country)
     await message.answer(
         "Assalomu alaykum! 👋\nViza olish bo'yicha konsalting xizmatimizga xush kelibsiz.\n\n"
-        "Qaysi davlat vizasi kerak? (masalan: Shengen, AQSH, Buyuk Britaniya)",
+        "Qaysi davlatga ish vizasi olmoqchisiz? (Masalan: Germaniya, Chexiya, Polsha va h.k.)",
         reply_markup=ReplyKeyboardRemove(),
     )
 
