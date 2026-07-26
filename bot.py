@@ -19,6 +19,14 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
+# Anketa to'ldirilayotganda /buyruq yozilsa, uni javob deb qabul qilmaslik uchun filtr
+def not_a_command(message: Message) -> bool:
+    return not (message.text and message.text.startswith("/"))
+
+
+def not_a_command_or_contact(message: Message) -> bool:
+    return bool(message.contact) or not_a_command(message)
+
 import config
 import database as db
 from click_pay import generate_click_link
@@ -62,7 +70,7 @@ async def cmd_start(message: Message, state: FSMContext):
     )
 
 
-@dp.message(LeadForm.country)
+@dp.message(LeadForm.country, F.func(not_a_command))
 async def form_country(message: Message, state: FSMContext):
     await state.update_data(country=message.text)
     await state.set_state(LeadForm.purpose)
@@ -76,14 +84,14 @@ async def form_country(message: Message, state: FSMContext):
     await message.answer("Maqsadingiz nima?", reply_markup=kb)
 
 
-@dp.message(LeadForm.purpose)
+@dp.message(LeadForm.purpose, F.func(not_a_command))
 async def form_purpose(message: Message, state: FSMContext):
     await state.update_data(purpose=message.text)
     await state.set_state(LeadForm.name)
     await message.answer("Ismingiz va familiyangiz?", reply_markup=ReplyKeyboardRemove())
 
 
-@dp.message(LeadForm.name)
+@dp.message(LeadForm.name, F.func(not_a_command))
 async def form_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(LeadForm.phone)
@@ -97,7 +105,7 @@ async def form_name(message: Message, state: FSMContext):
     )
 
 
-@dp.message(LeadForm.phone)
+@dp.message(LeadForm.phone, F.func(not_a_command_or_contact))
 async def form_phone(message: Message, state: FSMContext):
     phone = message.contact.phone_number if message.contact else message.text
     data = await state.update_data(phone=phone)
@@ -295,4 +303,3 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
