@@ -142,6 +142,17 @@ mijozni gapirtir - faqat o'zing gapirma. Mijozni bosim ostida qoldirma, lekin ta
 keyingi qadamga yo'naltir. Mijoz ism+telefon berguncha va aniq tayyor bo'lguncha to'lov haqida
 o'zing gap ochma - u so'raguncha yoki tayyor bo'lguncha kut.
 
+# SHARTNOMA TUZISH
+Mijoz "shartnoma qilaman", "to'lov qilaman", "roziman, boshlaymiz" kabi aniq rozilik bildirsa:
+1. Avval record_lead allaqachon chaqirilgan bo'lishi kerak (ism+telefon bo'lsin)
+2. Shartnoma uchun QO'SHIMCHA ravishda tug'ilgan sana, pasport ma'lumoti va manzilni so'ra -
+   buni tabiiy tarzda so'ra, masalan: "Zo'r! Shartnomani tayyorlash uchun yana bir nechta
+   ma'lumot kerak - tug'ilgan sanangiz, pasport seriya-raqamingiz va yashash manzilingizni
+   yuborsangiz bo'ladimi?"
+3. Barcha ma'lumot yig'ilgach, generate_contract funksiyasini chaqir - bu avtomatik to'liq
+   shartnoma hujjatini tayyorlab, mijozga yuboradi
+4. Mijozga hujjatni ko'rib chiqishini va savol bo'lsa berishini ayt
+
 # FAYL/HUJJAT SO'RALSA
 Mijoz guvohnoma, litsenziya yoki biror rasm/hujjat so'rasa (masalan "guvohnomangizni
 yuboring", "ishonch hosil qilishim uchun hujjat ko'rsating"), send_file funksiyasini chaqir.
@@ -225,6 +236,27 @@ TOOLS = [
                 },
             },
             "required": ["file_keyword"],
+        },
+    },
+    {
+        "name": "generate_contract",
+        "description": (
+            "Mijoz shartnoma tuzishga yoki to'lov qilishga aniq rozi bo'lgach chaqiriladi. "
+            "Buning uchun avval mijozdan to'liq ism-familiya, tug'ilgan sana, pasport ma'lumoti, "
+            "manzil va telefon raqamini so'rab olish kerak. Shu ma'lumotlar asosida to'liq "
+            "shartnoma hujjati (DOCX) avtomatik tayyorlanib, mijozga yuboriladi."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "full_name": {"type": "string", "description": "Mijozning to'liq ism-familiyasi"},
+                "birth_date": {"type": "string", "description": "Tug'ilgan sana (masalan 15.03.1998)"},
+                "passport": {"type": "string", "description": "Pasport seriya va raqami (masalan AB1234567)"},
+                "phone": {"type": "string", "description": "Telefon raqami"},
+                "address": {"type": "string", "description": "Yashash manzili"},
+                "country": {"type": "string", "description": "Davlat nomi (narxlar jadvalidagi nom bilan bir xil)"},
+            },
+            "required": ["full_name", "birth_date", "passport", "phone", "address", "country"],
         },
     },
 ]
@@ -349,6 +381,47 @@ def _run_tool(tool_name: str, tool_input: dict, client_telegram_id: int, client_
             "caption": file_row["description"],
         })
         return f"Fayl ('{file_row['description']}') mijozga yuborildi."
+
+    if tool_name == "generate_contract":
+        from contract import generate_contract_docx
+
+        full_name = tool_input.get("full_name", "")
+        birth_date = tool_input.get("birth_date", "")
+        passport = tool_input.get("passport", "")
+        phone = tool_input.get("phone", "")
+        address = tool_input.get("address", "")
+        country = tool_input.get("country", "")
+
+        conv = db.get_conversation(client_telegram_id)
+        lead_id = conv["lead_id"] if conv and conv["lead_id"] else client_telegram_id
+        contract_number = f"{lead_id}-{client_telegram_id % 10000}"
+
+        try:
+            filepath = generate_contract_docx(
+                contract_number=contract_number,
+                full_name=full_name,
+                birth_date=birth_date,
+                passport=passport,
+                phone=phone,
+                address=address,
+                country=country,
+            )
+        except Exception as e:
+            logger.error(f"Shartnoma yaratishda xato: {e}")
+            return "Shartnoma yaratishda texnik xato yuz berdi. Mijozga uzr so'rab, birozdan keyin urinib ko'rishni ayt."
+
+        notify.append({
+            "type": "client_document_path",
+            "client_telegram_id": client_telegram_id,
+            "path": filepath,
+            "caption": f"Shartnoma № {contract_number}",
+        })
+        notify.append({
+            "type": "admin_document_path",
+            "path": filepath,
+            "caption": f"📄 Yangi shartnoma tuzildi: {full_name} ({country})",
+        })
+        return f"Shartnoma № {contract_number} tayyorlandi va mijozga yuborildi."
 
     return "Noma'lum funksiya."
 

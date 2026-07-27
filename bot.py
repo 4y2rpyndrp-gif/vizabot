@@ -17,7 +17,7 @@ from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, FSInputFile
 
 import ai_seller
 
@@ -53,6 +53,14 @@ async def _send_notifications(notify: list):
                     await bot.send_photo(item["client_telegram_id"], item["telegram_file_id"], caption=item.get("caption", ""))
                 else:
                     await bot.send_document(item["client_telegram_id"], item["telegram_file_id"], caption=item.get("caption", ""))
+            elif item["type"] == "client_document_path":
+                await bot.send_document(
+                    item["client_telegram_id"], FSInputFile(item["path"]), caption=item.get("caption", "")
+                )
+            elif item["type"] == "admin_document_path" and config.ADMIN_GROUP_ID:
+                await bot.send_document(
+                    config.ADMIN_GROUP_ID, FSInputFile(item["path"]), caption=item.get("caption", "")
+                )
         except Exception as e:
             logger.warning(f"Xabarnoma yuborib bo'lmadi: {e}")
 
