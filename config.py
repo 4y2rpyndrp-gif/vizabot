@@ -30,4 +30,4 @@ ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
 AI_SELLER_ENABLED = os.getenv("AI_SELLER_ENABLED", "true").lower() == "true"
 
 # Ma'lumotlar bazasi fayli (hech narsa o'zgartirish shart emas)
-DB_PATH = os.path.join(os.path.dirname(__file__), "vizabot.db")
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "vizabot.db"))
