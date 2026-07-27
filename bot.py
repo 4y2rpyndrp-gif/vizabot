@@ -48,8 +48,77 @@ async def _send_notifications(notify: list):
                 await bot.send_message(item["telegram_id"], item["text"])
             elif item["type"] == "admin" and config.ADMIN_GROUP_ID:
                 await bot.send_message(config.ADMIN_GROUP_ID, item["text"])
+            elif item["type"] == "client_file":
+                if item["file_type"] == "photo":
+                    await bot.send_photo(item["client_telegram_id"], item["telegram_file_id"], caption=item.get("caption", ""))
+                else:
+                    await bot.send_document(item["client_telegram_id"], item["telegram_file_id"], caption=item.get("caption", ""))
         except Exception as e:
             logger.warning(f"Xabarnoma yuborib bo'lmadi: {e}")
+
+
+@dp.message(F.document | F.photo, StateFilter(None))
+async def group_file_upload_handler(message: Message):
+    """
+    Nazorat guruhida fayl (PDF/rasm) + izoh bilan yuborilsa, uni bilim bazasiga saqlaydi.
+    Foydalanish: faylni yuboring, izohiga (caption) shu formatda yozing:
+    /fayl <kalit_soz> <tavsif>
+    Masalan: /fayl guvohnoma Korxonaning ro'yxatdan o'tganlik guvohnomasi
+    """
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+
+    caption = (message.caption or "").strip()
+    if not caption.startswith("/fayl"):
+        return
+
+    parts = caption.split(maxsplit=2)
+    if len(parts) < 2:
+        await message.answer("Foydalanish: faylga izoh sifatida yozing:\n/fayl <kalit_soz> <tavsif>")
+        return
+
+    keyword = parts[1].lower()
+    description = parts[2] if len(parts) > 2 else keyword
+
+    if message.document:
+        file_id = message.document.file_id
+        file_type = "document"
+    else:
+        file_id = message.photo[-1].file_id
+        file_type = "photo"
+
+    db.add_file(keyword, file_id, file_type, description)
+    await message.answer(
+        f"✅ Fayl bilim bazasiga qo'shildi!\nKalit so'z: «{keyword}»\nTavsif: {description}\n\n"
+        f"AI endi mijoz shunga o'xshash narsani so'raganda shu faylni avtomatik yuboradi."
+    )
+
+
+@dp.message(Command("fayllar"))
+async def cmd_list_files(message: Message):
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+    files = db.list_files()
+    if not files:
+        await message.answer("Fayl kutubxonasi hozircha bo'sh. Faylni yuborib, izohiga /fayl <kalit_soz> <tavsif> deb yozing.")
+        return
+    lines = ["📎 Fayl kutubxonasi:\n"]
+    for f in files:
+        lines.append(f"«{f['keyword']}» - {f['description']}")
+    lines.append("\nO'chirish uchun: /fayl_ochir <kalit_soz>")
+    await message.answer("\n".join(lines))
+
+
+@dp.message(Command("fayl_ochir"))
+async def cmd_delete_file(message: Message):
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Foydalanish: /fayl_ochir <kalit_soz>")
+        return
+    db.delete_file(parts[1].lower())
+    await message.answer(f"✅ «{parts[1]}» fayl kutubxonasidan o'chirildi.")
 
 
 # ---------------- MIJOZ SUHBATI (FSM holatlari) ----------------

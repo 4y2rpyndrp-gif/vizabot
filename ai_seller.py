@@ -142,6 +142,12 @@ mijozni gapirtir - faqat o'zing gapirma. Mijozni bosim ostida qoldirma, lekin ta
 keyingi qadamga yo'naltir. Mijoz ism+telefon berguncha va aniq tayyor bo'lguncha to'lov haqida
 o'zing gap ochma - u so'raguncha yoki tayyor bo'lguncha kut.
 
+# FAYL/HUJJAT SO'RALSA
+Mijoz guvohnoma, litsenziya yoki biror rasm/hujjat so'rasa (masalan "guvohnomangizni
+yuboring", "ishonch hosil qilishim uchun hujjat ko'rsating"), send_file funksiyasini chaqir.
+Agar fayl topilmasa ham xavotirlanma - tizim buni avtomatik qayd qiladi, sen esa mijozga
+"albatta yuboraman, bir daqiqa" kabi ishonchli javob ber.
+
 # YOZUV TARZIGA MOSLASHISH
 Mijoz kirill alifbosida yozsa (masalan "Ассалому алайкум, нархи қанча"), sen ham albatta
 KIRILL alifbosida javob ber. Agar lotin alifbosida yozsa, lotin bilan javob ber. Bu juda muhim
@@ -201,6 +207,24 @@ TOOLS = [
                 "question": {"type": "string", "description": "Mijozning aniq savoli (o'z so'zlari bilan)"},
             },
             "required": ["question"],
+        },
+    },
+    {
+        "name": "send_file",
+        "description": (
+            "Mijoz hujjat, guvohnoma, litsenziya yoki rasm ko'rishni so'rasa chaqiriladi "
+            "(masalan 'guvohnomangizni yuboring', 'litsenziyangiz bormi ko'rsating'). "
+            "Fayl bilim bazasida mavjud bo'lsa, mijozga avtomatik yuboriladi."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_keyword": {
+                    "type": "string",
+                    "description": "Fayl kaliti (masalan 'guvohnoma', 'litsenziya') - kompaniya tomonidan belgilangan nom",
+                },
+            },
+            "required": ["file_keyword"],
         },
     },
 ]
@@ -305,6 +329,26 @@ def _run_tool(tool_name: str, tool_input: dict, client_telegram_id: int, client_
             ),
         })
         return "Savol qayd qilindi, mutaxassisga yuborildi. Suhbatni davom ettir."
+
+    if tool_name == "send_file":
+        keyword = tool_input.get("file_keyword", "").lower()
+        file_row = db.get_file_by_keyword(keyword)
+        if not file_row:
+            db.log_unknown_question(client_telegram_id, f"Mijoz '{keyword}' faylini so'radi, lekin bunday fayl bilim bazasida yo'q.")
+            notify.append({
+                "type": "admin",
+                "text": f"📎 Mijoz '{keyword}' faylini so'radi, lekin bazada yo'q. Faylni yuborib, /fayl {keyword} <tavsif> deb qo'shing.",
+            })
+            return f"Bu fayl ('{keyword}') hozircha bazada yo'q. Kompaniyaga xabar berdim, tez orada qo'shiladi. Mijozga tabiiy javob ber."
+
+        notify.append({
+            "type": "client_file",
+            "client_telegram_id": client_telegram_id,
+            "telegram_file_id": file_row["telegram_file_id"],
+            "file_type": file_row["file_type"],
+            "caption": file_row["description"],
+        })
+        return f"Fayl ('{file_row['description']}') mijozga yuborildi."
 
     return "Noma'lum funksiya."
 

@@ -77,11 +77,64 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS file_library (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            keyword TEXT UNIQUE,
+            telegram_file_id TEXT,
+            file_type TEXT,
+            description TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
-# ---------- DINAMIK BILIM BAZASI (guruhda /bilim orqali qo'shiladi) ----------
+# ---------- FAYL KUTUBXONASI (guruhda fayl yuborib qo'shiladi) ----------
+
+def add_file(keyword: str, telegram_file_id: str, file_type: str, description: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO file_library (keyword, telegram_file_id, file_type, description)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(keyword) DO UPDATE SET
+             telegram_file_id = excluded.telegram_file_id,
+             file_type = excluded.file_type,
+             description = excluded.description,
+             created_at = datetime('now')""",
+        (keyword, telegram_file_id, file_type, description),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_file_by_keyword(keyword: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM file_library WHERE keyword = ?", (keyword,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+
+def list_files():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM file_library ORDER BY created_at DESC")
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def delete_file(keyword: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM file_library WHERE keyword = ?", (keyword,))
+    conn.commit()
+    conn.close()
 
 def add_knowledge_fact(fact: str):
     conn = get_conn()
