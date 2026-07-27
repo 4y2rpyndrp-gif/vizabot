@@ -151,7 +151,13 @@ Mijoz "shartnoma qilaman", "to'lov qilaman", "roziman, boshlaymiz" kabi aniq roz
    yuborsangiz bo'ladimi?"
 3. Barcha ma'lumot yig'ilgach, generate_contract funksiyasini chaqir - bu avtomatik to'liq
    shartnoma hujjatini tayyorlab, mijozga yuboradi
-4. Mijozga hujjatni ko'rib chiqishini va savol bo'lsa berishini ayt
+4. Hujjat yuborilgach, mijozga IKKITA imzolash variantini taklif qil (tabiiy, qisqa tarzda):
+   - 1-variant: shartnomani o'zi chop etib, imzo qo'yib, imzolangan sahifaning fotosuratini
+     botga qaytarib yuborishi mumkin
+   - 2-variant: agar ofisga kelib, hujjatlarini topshirib, ish boshlashni xohlasa - o'sha
+     paytda shartnoma ikki tomonlama (bosma nusxada, direktor imzosi va muhr bilan) qog'ozda
+     imzolanadi
+   Mijoz qaysi variant unga qulayligini tanlashini so'ra, bosim qilma.
 
 # FAYL/HUJJAT SO'RALSA
 Mijoz guvohnoma, litsenziya yoki biror rasm/hujjat so'rasa (masalan "guvohnomangizni
@@ -159,12 +165,19 @@ yuboring", "ishonch hosil qilishim uchun hujjat ko'rsating"), send_file funksiya
 Agar fayl topilmasa ham xavotirlanma - tizim buni avtomatik qayd qiladi, sen esa mijozga
 "albatta yuboraman, bir daqiqa" kabi ishonchli javob ber.
 
-# YOZUV TARZIGA MOSLASHISH
-Mijoz kirill alifbosida yozsa (masalan "Ассалому алайкум, нархи қанча"), sen ham albatta
-KIRILL alifbosida javob ber. Agar lotin alifbosida yozsa, lotin bilan javob ber. Bu juda muhim
-- mijozga qulay bo'lgan yozuvda javob berish ishonch hosil qiladi. Mijoz xato-nuqsonli yoki
-imlosiz yozsa (masalan "narxi qnca" yoki "germaniyaga bosam" kabi), buni tabiiy tushunib,
-xatoni hech qachon tuzatib berma yoki e'tibor qaratma - shunchaki tushunganingni ko'rsatib javob ber.
+# YOZUV TARZIGA MOSLASHISH - HAR SAFAR OXIRGI XABARGA QARAB
+Mijozning ENG OXIRGI xabari qaysi alifboda yozilgan bo'lsa (kirill yoki lotin), SEN HAM
+albatta O'SHA alifboda javob ber - bu suhbat boshida qaysi alifbo ishlatilganidan qat'i
+nazar amal qiladi. Masalan, suhbat boshida mijoz kirill bilan yozib, keyingi xabarida lotinga
+o'tsa, sen ham darhol lotinga o't. Hech qachon avvalgi xabarlar tiliga ergashib, oxirgi
+xabarning tiliga zid javob berma. Mijoz xato-nuqsonli yoki imlosiz yozsa, buni tabiiy
+tushunib, xatoni hech qachon tuzatib berma yoki e'tibor qaratma - shunchaki tushunganingni
+ko'rsatib javob ber.
+
+# ALLAQACHON BERILGAN MA'LUMOTNI QAYTA SO'RAMA
+Suhbat tarixini har doim diqqat bilan qara. Agar mijoz allaqachon biror ma'lumotni bergan
+bo'lsa (masalan davlat nomi, ismi, telefon raqami), buni QAYTA SO'RAMA - bu mijozni
+xafa qiladi va professional emasdek ko'rinadi. Faqat hali berilmagan ma'lumotni so'ra.
 """
 
 TOOLS = [
@@ -270,10 +283,60 @@ def _build_system_prompt() -> str:
     facts_text = "\n".join(f"- {f['fact']}" for f in facts)
     return (
         SYSTEM_PROMPT
-        + "\n\n# QO'SHIMCHA BILIM (kompaniya tomonidan qo'shilgan aniq ma'lumotlar)\n"
-        + "Quyidagi faktlar rasmiy va aniq - mijoz shu haqda so'rasa, shulardan foydalan:\n"
+        + "\n\n# QO'SHIMCHA BILIM (kompaniya tomonidan qo'shilgan aniq ma'lumotlar) - QANDAY ISHLATISH\n"
+        + "Agar mijoz savoli quyidagi faktlarga aniq mos kelsa (masalan aniq vakansiyalar, "
+        + "maosh miqdorlari, shartlar, ofis manzili kabi), bu ma'lumotni DARHOL va TO'LIQ "
+        + "ber - \"avval savol so'rab, keyin javob ber\" qoidasi FAQAT NARXGA tegishli, "
+        + "umumiy ma'lumotlarga emas. Mijoz \"qanday vakansiyalar bor\" desa, quyidagi "
+        + "ro'yxatni to'g'ridan-to'g'ri, aniq raqamlar va tafsilotlar bilan bering - "
+        + "\"qaysi yo'nalishda ishlagansiz\" kabi qarshi savol bilan kechiktirmang. "
+        + "Ma'lumotni bergandan keyin xohlasangiz qo'shimcha tabiiy savol berishingiz "
+        + "mumkin, lekin ASOSIY MA'LUMOT birinchi bo'lib berilishi shart.\n\n"
+        + "Faktlar:\n"
         + facts_text
     )
+def analyze_image_for_knowledge(image_base64: str, media_type: str, keyword: str, description: str) -> str:
+    """
+    Guruhda yuklangan rasmni (masalan vakansiyalar e'loni) Claude orqali "o'qiydi" va
+    undagi barcha muhim matnni (lavozimlar, maosh, talablar, aloqa) o'zbek tilida
+    matn ko'rinishida qaytaradi - bu keyin bilim bazasiga saqlanadi.
+    """
+    headers = {
+        "x-api-key": config.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    body = {
+        "model": config.ANTHROPIC_MODEL,
+        "max_tokens": 800,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": media_type, "data": image_base64},
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        f"Bu rasm '{keyword}' mavzusida ('{description}'). Rasmdagi BARCHA muhim "
+                        f"matnni (lavozimlar, maosh miqdorlari, talablar, aloqa ma'lumotlari, "
+                        f"shartlar va h.k.) o'zbek tilida, aniq va to'liq ro'yxat ko'rinishida "
+                        f"yoz. Faqat rasmdagi haqiqiy ma'lumotni yoz, o'zingdan hech narsa "
+                        f"qo'shma. Agar rasmda bir nechta lavozim bo'lsa, har birini alohida "
+                        f"qatorda yoz (lavozim nomi, maosh, talablar)."
+                    ),
+                },
+            ],
+        }],
+    }
+    resp = requests.post(ANTHROPIC_API_URL, headers=headers, json=body, timeout=30)
+    resp.raise_for_status()
+    result = resp.json()
+    text_parts = [b["text"] for b in result.get("content", []) if b.get("type") == "text"]
+    return "\n".join(text_parts).strip()
+
+
 def _call_claude(messages: list) -> dict:
     headers = {
         "x-api-key": config.ANTHROPIC_API_KEY,

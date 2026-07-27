@@ -10,6 +10,7 @@ Oqim:
 """
 
 import asyncio
+import base64
 import logging
 
 from aiogram import Bot, Dispatcher, F
@@ -96,6 +97,28 @@ async def group_file_upload_handler(message: Message):
         file_type = "photo"
 
     db.add_file(keyword, file_id, file_type, description)
+
+    # Agar rasm bo'lsa, AI orqali ichidagi matnni o'qib, bilim bazasiga ham qo'shamiz
+    if file_type == "photo":
+        try:
+            tg_file = await bot.get_file(file_id)
+            file_bytes_io = await bot.download_file(tg_file.file_path)
+            image_b64 = base64.b64encode(file_bytes_io.read()).decode("utf-8")
+            extracted_text = ai_seller.analyze_image_for_knowledge(
+                image_b64, "image/jpeg", keyword, description
+            )
+            if extracted_text:
+                db.add_knowledge_fact(f"[{keyword}] {extracted_text}")
+                await message.answer(
+                    f"✅ Fayl bilim bazasiga qo'shildi!\nKalit so'z: «{keyword}»\nTavsif: {description}\n\n"
+                    f"📖 Rasmdagi matn o'qib olindi va bilim bazasiga qo'shildi - AI endi shu "
+                    f"ma'lumotdan (masalan aniq vakansiyalar, maosh) to'g'ridan-to'g'ri javob "
+                    f"bera oladi, shuningdek so'ralganda rasmning o'zini ham yuboradi."
+                )
+                return
+        except Exception as e:
+            logger.warning(f"Rasmdan matn ajratib olishda xato: {e}")
+
     await message.answer(
         f"✅ Fayl bilim bazasiga qo'shildi!\nKalit so'z: «{keyword}»\nTavsif: {description}\n\n"
         f"AI endi mijoz shunga o'xshash narsani so'raganda shu faylni avtomatik yuboradi."
