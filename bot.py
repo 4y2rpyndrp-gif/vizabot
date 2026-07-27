@@ -231,6 +231,36 @@ async def cmd_add_seller(message: Message):
     await message.answer(f"✅ Sotuvchi qo'shildi: {name} (id: {tg_id})")
 
 
+@dp.message(Command("savollar"))
+async def cmd_unknown_questions(message: Message):
+    """Faqat nazorat guruhida ishlaydi - AI bilmagan savollar ro'yxatini ko'rsatadi."""
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+
+    questions = db.get_unanswered_questions()
+    if not questions:
+        await message.answer("Hozircha javobsiz savollar yo'q.")
+        return
+
+    lines = ["❓ AI bilmagan savollar:\n"]
+    for q in questions[:20]:
+        lines.append(f"#{q['id']} (mijoz {q['client_telegram_id']}): {q['question']}")
+    lines.append("\nJavob topgach, bilim bazasiga (ai_seller.py) qo'shib, /javoblandi <id> deb belgilang.")
+    await message.answer("\n".join(lines))
+
+
+@dp.message(Command("javoblandi"))
+async def cmd_mark_answered(message: Message):
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+    parts = message.text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.answer("Foydalanish: /javoblandi <savol_raqami>")
+        return
+    db.mark_question_answered(int(parts[1]))
+    await message.answer(f"✅ Savol #{parts[1]} javoblandi deb belgilandi.")
+
+
 @dp.message(Command("myid"))
 async def cmd_myid(message: Message):
     await message.answer(f"Sizning Telegram ID: `{message.from_user.id}`", parse_mode="Markdown")

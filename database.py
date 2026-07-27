@@ -59,11 +59,48 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS unknown_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_telegram_id INTEGER,
+            question TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            answered INTEGER DEFAULT 0
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
-# ---------- AI SUHBAT TARIXI ----------
+# ---------- NOMA'LUM SAVOLLAR (AI bilim bazasini boyitish uchun) ----------
+
+def log_unknown_question(client_telegram_id: int, question: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO unknown_questions (client_telegram_id, question) VALUES (?, ?)",
+        (client_telegram_id, question),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_unanswered_questions():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM unknown_questions WHERE answered = 0 ORDER BY created_at DESC")
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def mark_question_answered(question_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE unknown_questions SET answered = 1 WHERE id = ?", (question_id,))
+    conn.commit()
+    conn.close()
 
 def get_conversation(client_telegram_id: int):
     conn = get_conn()

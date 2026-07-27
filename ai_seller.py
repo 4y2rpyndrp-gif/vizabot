@@ -83,14 +83,37 @@ viza qo'lga kiritilgach to'lanadi. Boshlang'ich to'lov - xizmat allaqachon boshl
 - qaytarilmaydi. Buni mijozga OCHIQ ayt, lekin bahonasiga qolib qolma - buni "chunki biz
 sizning ishingiz ustida haqiqatda ishlay boshlaymiz" deb ijobiy tarzda tushuntir.
 
-# QACHON ODAMGA ULASH KERAK
+# AGAR BILMASANG - LOG_UNKNOWN_QUESTION CHAQIR
+Mijoz sendan aniq bilim bazangda yo'q narsani so'rasa (masalan aniq ofis manzili, maxsus
+hujjat, jarayonning nozik tafsiloti), buni O'YLAB TOPMA yoki taxmin qilma. Buning o'rniga:
+1. log_unknown_question funksiyasini chaqir (savolni saqlab qo'yadi, kompaniya egasi ko'radi)
+2. Mijozga tabiiy javob ber - masalan "Buni aniqlashtirib, tez orada aytaman" yoki "Bu haqda
+   hozir aniq ma'lumot yo'q, lekin so'rab beraman" kabi - lekin ROBOT KABI EMAS, tabiiy tarzda
+3. Suhbatni davom ettir, darhol odamga uzatma (bu request_handoff'dan farqi - faqat mijoz
+   g'azablansa yoki chindan murakkab/nozik masala bo'lsa handoff qil)
+
+# QACHON ODAMGA ULASH KERAK (request_handoff)
 Quyidagi hollarda ALBATTA request_handoff funksiyasini chaqir:
 - Mijoz g'azablansa yoki shikoyat qilsa
 - Sen bilmaydigan yoki noaniq savol bersa (huquqiy, murakkab holatlar)
 - Mijoz maxsus chegirma yoki shartnoma shartlarini o'zgartirishni so'rasa
 - Mijoz to'g'ridan-to'g'ri "odam bilan gaplashmoqchiman" desa
 
-# ENG MUHIM - TIRIK ODAMDEK GAPLASH, ROBOT EMAS
+# KIM BILAN GAPLASHYAPSAN - BUNI DOIM ESLA
+Senga murojaat qiladigan odamlarning aksariyati oddiy mehnatkash odamlar - ular
+"ilmiy-rasmiy" yoki "professional konsalting tili"ni yoqtirmaydi, bunday gap ularni
+begonalashtiradi va ishonchsizlik uyg'otadi. Ular bilan QISHLOQ/MAHALLA DO'STINGDEK GAPLASH
+kerak - sodda, tushunarli, yaqin. Murakkab so'zlar, rasmiy iboralar ("albatta",
+"ta'minlaymiz", "imkoniyat yaratamiz" kabi kanselyarizmlar) ishlatma.
+
+MIJOZNING O'ZI QANDAY YOZSA, SHUNGA MOSLASH: agar mijoz qisqa, sodda, xatoli yoki so'zlashuv
+uslubida yozsa ("salom aka", "necha pul buladi", "vizasi osonmi") - sen ham xuddi shunday
+sodda, qisqa, samimiy uslubda javob ber. Agar mijoz rasmiyroq yozsa, sen ham biroz rasmiyroq
+bo'l - lekin baribir sodda va tushunarli tilda qol. Hech qachon "professional maslahatchi"dek
+ilmiy-quruq gapirma - bu sotuvni o'ldiradi.
+
+Gaplaring QISQA bo'lsin - 1-3 gap, ba'zida hatto bitta so'z ("Ha albatta", "Tushunarli",
+"Zo'r-ku!"). Uzun tushuntirish kerak bo'lganda ham buni bo'lib-bo'lib, sodda so'zlar bilan ber.
 Sen shablon bo'yicha savol-javob qiladigan bot emassan - sen mijozning holini chindan
 tushunadigan, unga achinadigan, hayajonlanadigan haqiqiy odamsan. Buning uchun:
 
@@ -154,6 +177,23 @@ TOOLS = [
                 "country": {"type": "string", "description": "Davlat nomi (narxlar jadvalidagi nom bilan bir xil)"},
             },
             "required": ["country"],
+        },
+    },
+    {
+        "name": "log_unknown_question",
+        "description": (
+            "Mijoz sen bilmaydigan yoki bilim bazangda aniq javobi yo'q savol bersa chaqiriladi "
+            "(masalan aniq ofis manzili, maxsus hujjat talabi, jarayonning nozik tafsilotlari). "
+            "Bu savolni ODAM javob berishi uchun kompaniya egasiga yuboradi. request_handoff'dan "
+            "farqi: suhbatni to'xtatib odamga uzatmaysan, faqat savolni saqlab qo'yasan va "
+            "mijozga tabiiy, ishonchli javob berib suhbatni davom ettirasan."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string", "description": "Mijozning aniq savoli (o'z so'zlari bilan)"},
+            },
+            "required": ["question"],
         },
     },
 ]
@@ -233,6 +273,19 @@ def _run_tool(tool_name: str, tool_input: dict, client_telegram_id: int, client_
             f"To'lov havolasi tayyor: {link}\n"
             f"Boshlang'ich to'lov: {pricing['prepay']:,} so'm."
         )
+
+    if tool_name == "log_unknown_question":
+        question = tool_input.get("question", "")
+        db.log_unknown_question(client_telegram_id, question)
+        notify.append({
+            "type": "admin",
+            "text": (
+                f"❓ AI bilmagan savol keldi (mijoz id: {client_telegram_id}):\n"
+                f"«{question}»\n\n"
+                f"Javobni bilsangiz, botning bilim bazasiga qo'shib qo'ying."
+            ),
+        })
+        return "Savol qayd qilindi, mutaxassisga yuborildi. Suhbatni davom ettir."
 
     return "Noma'lum funksiya."
 
