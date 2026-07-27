@@ -231,6 +231,56 @@ async def cmd_add_seller(message: Message):
     await message.answer(f"✅ Sotuvchi qo'shildi: {name} (id: {tg_id})")
 
 
+@dp.message(Command("bilim"))
+async def cmd_add_knowledge(message: Message):
+    """Faqat nazorat guruhida ishlaydi. Foydalanish: /bilim <fakt matni>
+    Bu yerga qo'shilgan har qanday matn AI'ning bilim bazasiga darhol qo'shiladi -
+    qayta kod yozish yoki qayta deploy qilish shart emas."""
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+
+    fact = message.text.replace("/bilim", "", 1).strip()
+    if not fact:
+        await message.answer(
+            "Foydalanish: /bilim <matn>\n\n"
+            "Masalan: /bilim Ofisimiz Toshkent, Chilonzor tumani, Bunyodkor ko'chasi 12-uyda joylashgan"
+        )
+        return
+
+    db.add_knowledge_fact(fact)
+    await message.answer(f"✅ Bilim bazasiga qo'shildi:\n«{fact}»\n\nAI endi shu ma'lumotdan darhol foydalanadi.")
+
+
+@dp.message(Command("bilimlar"))
+async def cmd_list_knowledge(message: Message):
+    """Bilim bazasidagi barcha faktlarni ko'rsatadi."""
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+
+    facts = db.get_all_knowledge_facts()
+    if not facts:
+        await message.answer("Bilim bazasi hozircha bo'sh. /bilim <matn> orqali qo'shing.")
+        return
+
+    lines = ["📚 Bilim bazasi:\n"]
+    for f in facts:
+        lines.append(f"#{f['id']}: {f['fact']}")
+    lines.append("\nO'chirish uchun: /bilim_ochir <raqam>")
+    await message.answer("\n".join(lines))
+
+
+@dp.message(Command("bilim_ochir"))
+async def cmd_delete_knowledge(message: Message):
+    if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        return
+    parts = message.text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.answer("Foydalanish: /bilim_ochir <raqam>")
+        return
+    db.delete_knowledge_fact(int(parts[1]))
+    await message.answer(f"✅ #{parts[1]} bilim bazasidan o'chirildi.")
+
+
 @dp.message(Command("savollar"))
 async def cmd_unknown_questions(message: Message):
     """Faqat nazorat guruhida ishlaydi - AI bilmagan savollar ro'yxatini ko'rsatadi."""

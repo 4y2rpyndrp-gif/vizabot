@@ -69,11 +69,43 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_base (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fact TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
-# ---------- NOMA'LUM SAVOLLAR (AI bilim bazasini boyitish uchun) ----------
+# ---------- DINAMIK BILIM BAZASI (guruhda /bilim orqali qo'shiladi) ----------
+
+def add_knowledge_fact(fact: str):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO knowledge_base (fact) VALUES (?)", (fact,))
+    conn.commit()
+    conn.close()
+
+
+def get_all_knowledge_facts():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM knowledge_base ORDER BY created_at ASC")
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def delete_knowledge_fact(fact_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM knowledge_base WHERE id = ?", (fact_id,))
+    conn.commit()
+    conn.close()
 
 def log_unknown_question(client_telegram_id: int, question: str):
     conn = get_conn()

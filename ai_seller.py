@@ -199,6 +199,18 @@ TOOLS = [
 ]
 
 
+def _build_system_prompt() -> str:
+    """Asosiy promptga guruhda /bilim orqali qo'shilgan qo'shimcha faktlarni ham qo'shadi."""
+    facts = db.get_all_knowledge_facts()
+    if not facts:
+        return SYSTEM_PROMPT
+    facts_text = "\n".join(f"- {f['fact']}" for f in facts)
+    return (
+        SYSTEM_PROMPT
+        + "\n\n# QO'SHIMCHA BILIM (kompaniya tomonidan qo'shilgan aniq ma'lumotlar)\n"
+        + "Quyidagi faktlar rasmiy va aniq - mijoz shu haqda so'rasa, shulardan foydalan:\n"
+        + facts_text
+    )
 def _call_claude(messages: list) -> dict:
     headers = {
         "x-api-key": config.ANTHROPIC_API_KEY,
@@ -208,7 +220,7 @@ def _call_claude(messages: list) -> dict:
     body = {
         "model": config.ANTHROPIC_MODEL,
         "max_tokens": 1024,
-        "system": SYSTEM_PROMPT,
+        "system": _build_system_prompt(),
         "tools": TOOLS,
         "messages": messages,
     }
