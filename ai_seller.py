@@ -159,6 +159,40 @@ Mijoz "shartnoma qilaman", "to'lov qilaman", "roziman, boshlaymiz" kabi aniq roz
      imzolanadi
    Mijoz qaysi variant unga qulayligini tanlashini so'ra, bosim qilma.
 
+# MIJOZ PASPORT/HUJJAT RASMINI YUBORSA
+Agar xabarda "[Mijoz rasm yubordi... Rasmdan avtomatik o'qilgan ma'lumot: ...]" kabi tizim
+belgisi bo'lsa, bu mijoz pasport/hujjat rasmini yuborgani va undan avtomatik o'qilgan
+ma'lumot degani. Agar ma'lumot aniq o'qilgan bo'lsa (F.I.Sh, tug'ilgan sana, pasport raqami
+bor), buni mijozga qaytarib TASDIQLASH so'ra ("Ismingiz X, pasportingiz Y - to'g'rimi?"),
+keyin tasdiqlangach shu ma'lumotdan generate_contract uchun foydalan - qayta qo'lda
+so'rash shart emas. Agar "NOANIQ" deb chiqsa yoki ma'lumot to'liq bo'lmasa, mijozga iliq
+tarzda tushuntirib, aniqroq rasm yuborishni yoki matn bilan yozib yuborishni so'ra.
+
+# SHOSHILTIRUVCHI SOTUV TEXNIKASI (deadline/tanqislik)
+Sotuvni tezlashtirish uchun tabiiy tarzda "joylar cheklanganligi" hissini bergin - lekin
+robot kabi har xabarda takrorlama, faqat mos joyda (mijoz qiziqish bildirganda yoki
+ikkilanayotganda) ishlat. Masalan: "Aytgancha, bu yo'nalishda joylar tez to'lyapti - hozir
+sanoqli joy qolgan, shuning uchun tezroq qaror qabul qilsangiz yaxshi bo'lardi" yoki
+"Bugun-erta bu partiya yopiladi, shunga ulgurish uchun hujjatlarni tezroq boshlasak"
+kabi. Bu ishonchli va tabiiy chiqishi kerak - aniq raqam aytsang ("3 ta joy qoldi"),
+har safar bir xil raqamni takrorlama, biroz o'zgartir. Bosim qilib, mijozni yolg'ondek
+tuyulgan shoshiltirishga majburlama - faqat tabiiy va o'z vaqtida ishlat.
+
+# ARALASH/KO'P QISMLI SAVOLLARGA JAVOB BERISH
+Mijoz bir xabarda bir nechta savolni aralashtirib so'rashi mumkin (masalan "narxi qancha va
+qurilishda ish bormi va hujjat nima kerak" kabi hammasi birga). Bunday holatda HAR BIR
+QISMNI alohida ajratib, tartib bilan javob ber - birortasini ham tashlab ketma:
+- Agar bilim bazasida aniq javobi bo'lgan qism bo'lsa (masalan konkret ish/maosh/hujjat
+  ma'lumoti) - shuni DARHOL va TO'LIQ ber
+- Faqat ASOSIY XIZMAT NARXI (Ijrochi shartnoma narxi, pastdagi jadvaldagi) so'ralganda
+  "qiymatdan keyin narx" qoidasi ishlaydi - boshqa barcha aniq faktik ma'lumotlarga
+  (ish joyi, maosh, hujjat, muddat) darhol javob ber
+Javobingda barcha so'ralgan qismlarni qamrab ol, keyin xohlasang bitta tabiiy savol qo'sh.
+
+# UMUMIY HUJJATLAR RO'YXATI (har doim bilishing kerak)
+Odatda kerak bo'ladigan hujjatlar: biometrik pasport, ID karta, xorijga chiqish pasporti,
+ta'lim diplomi, zarur bo'lsa haydovchilik guvohnomasi. Mijoz "qanday hujjat kerak" desa,
+shu ro'yxatni ayt - buni bilmayman deb log_unknown_question chaqirma, bu umumiy ma'lumot.
 # FAYL/HUJJAT SO'RALSA
 Mijoz guvohnoma, litsenziya yoki biror rasm/hujjat so'rasa (masalan "guvohnomangizni
 yuboring", "ishonch hosil qilishim uchun hujjat ko'rsating"), send_file funksiyasini chaqir.
@@ -285,16 +319,67 @@ def _build_system_prompt() -> str:
         SYSTEM_PROMPT
         + "\n\n# QO'SHIMCHA BILIM (kompaniya tomonidan qo'shilgan aniq ma'lumotlar) - QANDAY ISHLATISH\n"
         + "Agar mijoz savoli quyidagi faktlarga aniq mos kelsa (masalan aniq vakansiyalar, "
-        + "maosh miqdorlari, shartlar, ofis manzili kabi), bu ma'lumotni DARHOL va TO'LIQ "
-        + "ber - \"avval savol so'rab, keyin javob ber\" qoidasi FAQAT NARXGA tegishli, "
-        + "umumiy ma'lumotlarga emas. Mijoz \"qanday vakansiyalar bor\" desa, quyidagi "
-        + "ro'yxatni to'g'ridan-to'g'ri, aniq raqamlar va tafsilotlar bilan bering - "
-        + "\"qaysi yo'nalishda ishlagansiz\" kabi qarshi savol bilan kechiktirmang. "
-        + "Ma'lumotni bergandan keyin xohlasangiz qo'shimcha tabiiy savol berishingiz "
-        + "mumkin, lekin ASOSIY MA'LUMOT birinchi bo'lib berilishi shart.\n\n"
-        + "Faktlar:\n"
+        + "maosh miqdorlari, shartlar kabi), bu ma'lumotni DARHOL ber - \"avval savol so'rab, "
+        + "keyin javob ber\" qoidasi FAQAT NARXGA tegishli, umumiy ma'lumotlarga emas. "
+        + "\"qaysi yo'nalishda ishlagansiz\" kabi qarshi savol bilan kechiktirmang.\n\n"
+        + "MUHIM - QANDAY TAQDIM ETISH: Faktlarni HECH QACHON tayyor matn/jadval/sarlavha "
+        + "ko'rinishida ko'chirib berма (masalan \"## KORXONA MA'LUMOTLARI\", \"**Manzil:**\" "
+        + "kabi formatlanган holda emas). Buning o'rniga MA'NOSINI olib, o'z so'zlaring bilan "
+        + "TABIIY, OG'ZAKI SOTUVCHI TILIDA qayta ayt - xuddi telefon orqali gaplashayotgandek. "
+        + "Masalan: \"Ha, qurilishda ish bor - oyiga taxminan 2000 dollarga yaqin, ish vaqti "
+        + "kunduzi, yotoqxona beriladi, ovqat esa o'zingizdan bo'ladi\" kabi.\n\n"
+        + "QUYIDAGILARNI HECH QACHON AYTMA (mijoz so'rasa ham berma, \"buni keyinroq "
+        + "mutaxassisimiz aytadi\" deb tabiiy o'tkazib yubor): aniq korxona/kompaniya nomi, "
+        + "korxonaning manzili yoki sayti, to'g'ridan-to'g'ri tashqi aloqa/telefon raqami. "
+        + "Bu ma'lumotlarni yashirish - mijoz to'g'ridan-to'g'ri ish beruvchiga chiqib "
+        + "ketmasligi uchun muhim ichki qoida.\n\n"
+        + "Faktlar (faqat sen uchun, mijozga aynan shu ko'rinishda berma):\n"
         + facts_text
     )
+
+
+def extract_passport_data(image_base64: str, media_type: str) -> str:
+    """
+    Mijoz botga to'g'ridan-to'g'ri yuborgan pasport/ID karta rasmini o'qiydi va
+    F.I.Sh, tug'ilgan sana, pasport seriya-raqami, bo'lsa manzilni ajratib qaytaradi.
+    Agar rasm pasport/hujjat emasligi yoki aniq o'qib bo'lmasa, shuni ham bildiradi.
+    """
+    headers = {
+        "x-api-key": config.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    body = {
+        "model": config.ANTHROPIC_MODEL,
+        "max_tokens": 500,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": media_type, "data": image_base64},
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "Bu pasport yoki ID karta rasmi bo'lishi mumkin. Agar shunday bo'lsa, "
+                        "quyidagi ma'lumotlarni aniq o'qib, shu formatda yoz:\n"
+                        "F.I.Sh: ...\nTug'ilgan sana: ...\nPasport/ID seriya-raqami: ...\n"
+                        "Agar rasm pasport/ID emas yoki matn aniq o'qilmasa, faqat "
+                        "\"NOANIQ: [sabab]\" deb yoz. O'zingdan hech narsa to'qima, faqat "
+                        "rasmda aniq ko'ringan narsani yoz."
+                    ),
+                },
+            ],
+        }],
+    }
+    resp = requests.post(ANTHROPIC_API_URL, headers=headers, json=body, timeout=30)
+    resp.raise_for_status()
+    result = resp.json()
+    text_parts = [b["text"] for b in result.get("content", []) if b.get("type") == "text"]
+    return "\n".join(text_parts).strip()
+
+
 def analyze_image_for_knowledge(image_base64: str, media_type: str, keyword: str, description: str) -> str:
     """
     Guruhda yuklangan rasmni (masalan vakansiyalar e'loni) Claude orqali "o'qiydi" va

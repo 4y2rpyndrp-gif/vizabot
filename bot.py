@@ -67,14 +67,15 @@ async def _send_notifications(notify: list):
 
 
 @dp.message(F.document | F.photo, StateFilter(None))
-async def group_file_upload_handler(message: Message):
+async def photo_document_handler(message: Message):
     """
-    Nazorat guruhida fayl (PDF/rasm) + izoh bilan yuborilsa, uni bilim bazasiga saqlaydi.
-    Foydalanish: faylni yuboring, izohiga (caption) shu formatda yozing:
-    /fayl <kalit_soz> <tavsif>
-    Masalan: /fayl guvohnoma Korxonaning ro'yxatdan o'tganlik guvohnomasi
+    Ikki xil holatni boshqaradi:
+    1. Nazorat guruhida fayl (PDF/rasm) + "/fayl" izohi bilan -> bilim bazasiga saqlanadi
+    2. Mijoz botga to'g'ridan-to'g'ri rasm (masalan pasport) yuborsa -> AI uni o'qib,
+       shartnoma uchun kerakli ma'lumotni ajratib oladi
     """
     if config.ADMIN_GROUP_ID and message.chat.id != config.ADMIN_GROUP_ID:
+        await client_photo_handler(message)
         return
 
     caption = (message.caption or "").strip()
@@ -192,6 +193,43 @@ async def cmd_start(message: Message, state: FSMContext):
         "Qaysi davlatga ish vizasi olmoqchisiz? (Masalan: Germaniya, Chexiya, Polsha va h.k.)",
         reply_markup=ReplyKeyboardRemove(),
     )
+
+
+async def client_photo_handler(message: Message):
+    """
+    Mijoz botga to'g'ridan-to'g'ri rasm (odatda pasport/ID karta) yuborsa chaqiriladi.
+    AI rasmni o'qib, undan chiqqan ma'lumotni suhbatga qo'shib, javob beradi.
+    """
+    if not config.AI_SELLER_ENABLED:
+        return
+    seller = db.get_seller_by_telegram_id(message.from_user.id)
+    if seller:
+        return
+
+    try:
+        file_id = message.photo[-1].file_id
+        tg_file = await bot.get_file(file_id)
+        file_bytes_io = await bot.download_file(tg_file.file_path)
+        image_b64 = base64.b64encode(file_bytes_io.read()).decode("utf-8")
+        extracted = ai_seller.extract_passport_data(image_b64, "image/jpeg")
+    except Exception as e:
+        logger.warning(f"Mijoz rasmini o'qishda xato: {e}")
+        await message.answer("Kechirasiz, rasmni ocha olmadim. Qayta yuborib ko'rasizmi?")
+        return
+
+    caption = (message.caption or "").strip()
+    synthetic_text = (
+        f"[Mijoz rasm yubordi - bu pasport/hujjat bo'lishi mumkin. "
+        f"Rasmdan avtomatik o'qilgan ma'lumot: {extracted}]"
+    )
+    if caption:
+        synthetic_text += f" Mijozning izohi: {caption}"
+
+    reply_text, notify = ai_seller.handle_message(
+        message.from_user.id, message.from_user.username or "", synthetic_text
+    )
+    await message.answer(reply_text)
+    await _send_notifications(notify)
 
 
 @dp.message(F.voice)
