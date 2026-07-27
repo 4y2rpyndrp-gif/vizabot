@@ -94,6 +94,18 @@ async def cmd_start(message: Message, state: FSMContext):
     )
 
 
+@dp.message(F.voice)
+async def voice_message_handler(message: Message):
+    """Mijoz ovozli xabar yuborsa, iliq tarzda matn yozishni so'raydi."""
+    seller = db.get_seller_by_telegram_id(message.from_user.id)
+    if seller:
+        return
+    await message.answer(
+        "Voy, uzr bo'lsin-a, hozircha ovozli xabarni eshita olmayapman 😔\n"
+        "Noqulay bo'lmasa, savolingizni yozib yuborsangiz - darhol javob beraman!"
+    )
+
+
 @dp.message(StateFilter(None), F.func(not_a_command))
 async def ai_chat_handler(message: Message):
     """AI sotuvchi yoqilgan bo'lsa, mijozning har qanday erkin xabari shu yerga tushadi
